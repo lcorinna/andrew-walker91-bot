@@ -7,7 +7,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": ["telegram", "bot", "funny", "meme",],
+  "keywords": ["telegram", "bot", "funny", "meme"],
   "author": {
     "name": "Gaydaychuk Dmitry",
     "email": "Gaida95@yandex.ru",
