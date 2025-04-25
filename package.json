@@ -1,14 +1,18 @@
 {
   "__note": "https://chatgpt.com/c/680a1f10-2678-8002-8a14-32fee3c88c27",
-  "name": "andrew-walker-bot",
+  "name": "andrew-walker91-bot",
   "version": "1.0.0",
-  "description": "",
+  "description": "Telegram bot that replies 'пизда' when someone writes 'да' or 'da' as a separate word.",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": ["telegram", "bot", "funny", "meme",],
+  "author": {
+    "name": "Gaydaychuk Dmitry",
+    "email": "Gaida95@yandex.ru",
+    "url": "https://t.me/Gaydaychuk"
+  },
   "license": "ISC",
   "dependencies": {
     "dotenv": "^16.5.0",
