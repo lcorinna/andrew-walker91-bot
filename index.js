@@ -6,17 +6,49 @@ const path = require('path');
 const token = process.env.BOT_TOKEN;
 const bot = new TelegramBot(token, { polling: true });
 
-// Загружаем все изображения из папки /images
+const ADMIN_ID = 271223425; // ← твой Telegram user ID
+
+// Пути
 const imageDir = path.join(__dirname, 'images');
+const statsPath = path.join(__dirname, 'stats.json');
+
+// Загрузка изображений
 const imageFiles = fs.readdirSync(imageDir).filter(file => /\.(jpg|png|jpeg|gif)$/i.test(file));
 
-// Обработка команды /start
+// Работа со статистикой
+function loadStats() {
+  if (!fs.existsSync(statsPath)) {
+    return { triggerCount: 0, chats: [] };
+  }
+  return JSON.parse(fs.readFileSync(statsPath, 'utf-8'));
+}
+
+function saveStats(stats) {
+  fs.writeFileSync(statsPath, JSON.stringify(stats, null, 2));
+}
+
+// /start — только в личке
 bot.onText(/^\/start$/, (msg) => {
   if (msg.chat.type === 'private') {
     const chatId = msg.chat.id;
-    const intro = "👋 Привет! Я бот в стиле @andrew_walker91. Добавь меня в группу, и я буду реагировать на слово 'да' 👀";
+    const intro = "👋 Привет! Я бот в стиле @andrew_walker91. Добавь меня в группу, и я буду реагировать на слово 'да' 👀\n\nℹ️ Напиши /about, чтобы узнать об авторе.";
     bot.sendMessage(chatId, intro);
   }
+});
+
+// /about — инфо об авторе
+bot.onText(/^\/about$/, (msg) => {
+  const chatId = msg.chat.id;
+  const message = `👤 Автор: @gaydaychuk\n💬 Нашли баг? Есть идеи? Пишите в личку!`;
+  bot.sendMessage(chatId, message);
+});
+
+// /stats — только для админа
+bot.onText(/^\/stats$/, (msg) => {
+  if (msg.from.id !== ADMIN_ID) return;
+
+  const stats = loadStats();
+  bot.sendMessage(msg.chat.id, `📊 Статистика:\n\nСработал: ${stats.triggerCount} раз\nЧатов: ${stats.chats.length}`);
 });
 
 // Основная логика ответа на "да" или "da"
@@ -24,15 +56,13 @@ bot.on('message', (msg) => {
   const chatId = msg.chat.id;
   const text = msg.text?.trim().toLowerCase();
 
-  // Проверка: "да" или "da" — только как отдельное слово
   if (/^(да|da)$/i.test(text)) {
     const replyOptions = {
       reply_to_message_id: msg.message_id
     };
 
-    // Выбираем случайный ответ: либо текст, либо изображение
+    // Отправка ответа
     const random = Math.random();
-
     if (random < 0.5 || imageFiles.length === 0) {
       bot.sendMessage(chatId, 'пизда', replyOptions);
     } else {
@@ -40,5 +70,13 @@ bot.on('message', (msg) => {
       const imagePath = path.join(imageDir, randomImage);
       bot.sendPhoto(chatId, fs.createReadStream(imagePath), replyOptions);
     }
+
+    // Обновление статистики
+    const stats = loadStats();
+    stats.triggerCount += 1;
+    if (!stats.chats.includes(chatId)) {
+      stats.chats.push(chatId);
+    }
+    saveStats(stats);
   }
 });
