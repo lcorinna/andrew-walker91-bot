@@ -18,7 +18,7 @@ const imageFiles = fs.readdirSync(imageDir).filter(file => /\.(jpg|png|jpeg|gif)
 // Работа со статистикой
 function loadStats() {
   if (!fs.existsSync(statsPath)) {
-    return { triggerCount: 0, chats: [] };
+    return { triggerCount: 0, chats: {} };
   }
   return JSON.parse(fs.readFileSync(statsPath, 'utf-8'));
 }
@@ -50,7 +50,16 @@ bot.onText(/^\/stats$/, (msg) => {
   if (msg.from.id !== ADMIN_ID || msg.chat.type !== 'private') return;
 
   const stats = loadStats();
-  bot.sendMessage(msg.chat.id, `📊 Статистика:\n\nСработал: ${stats.triggerCount} раз\nЧатов: ${stats.chats.length}`);
+  const lines = Object.entries(stats.chats).map(([id, name]) => `• ${name} (${id})`);
+
+  const text = `📊 Статистика:
+Сработал: ${stats.triggerCount} раз
+Чатов: ${lines.length}
+
+📋 Список чатов:
+${lines.join('\n')}`;
+
+  bot.sendMessage(msg.chat.id, text);
 });
 
 // Основная логика ответа на "да" или "da"
@@ -76,9 +85,17 @@ bot.on('message', (msg) => {
     // Обновление статистики
     const stats = loadStats();
     stats.triggerCount += 1;
-    if (!stats.chats.includes(chatId)) {
-      stats.chats.push(chatId);
+
+    if (!stats.chats[chatId]) {
+      const chatName =
+        msg.chat.title || // группы
+        msg.chat.username || // юзернейм в личке
+        `${msg.chat.first_name || ''} ${msg.chat.last_name || ''}`.trim() || // имя
+        'Без названия';
+
+      stats.chats[chatId] = chatName;
     }
+
     saveStats(stats);
   }
 });
