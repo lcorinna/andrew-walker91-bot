@@ -38,14 +38,16 @@ bot.onText(/^\/start$/, (msg) => {
 
 // /about — инфо об авторе
 bot.onText(/^\/about$/, (msg) => {
-  const chatId = msg.chat.id;
-  const message = `👤 Автор: @gaydaychuk\n💬 Нашли баг? Есть идеи? Пишите в личку!`;
-  bot.sendMessage(chatId, message);
+  if (msg.chat.type === 'private') {
+    const chatId = msg.chat.id;
+    const message = `👤 Автор: @gaydaychuk\n💬 Нашли баг? Есть идеи? Пишите в личку!`;
+    bot.sendMessage(chatId, message);
+  }
 });
 
-// /stats — только для админа
+// /stats — только для админа и только в личке
 bot.onText(/^\/stats$/, (msg) => {
-  if (msg.from.id !== ADMIN_ID) return;
+  if (msg.from.id !== ADMIN_ID || msg.chat.type !== 'private') return;
 
   const stats = loadStats();
   bot.sendMessage(msg.chat.id, `📊 Статистика:\n\nСработал: ${stats.triggerCount} раз\nЧатов: ${stats.chats.length}`);
