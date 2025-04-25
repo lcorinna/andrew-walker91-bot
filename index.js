@@ -12,14 +12,11 @@ const imageFiles = fs.readdirSync(imageDir).filter(file => /\.(jpg|png|jpeg|gif)
 
 // Обработка команды /start
 bot.onText(/^\/start$/, (msg) => {
-  const chatId = msg.chat.id;
-  const isGroup = msg.chat.type.endsWith('group');
-
-  const intro = isGroup
-    ? "✅ Бот активирован. Я буду следить за сообщениями с 'да' и отвечать в стиле @andrew_walker91.\n\n⚙️ Убедитесь, что в @BotFather отключена privacy!"
-    : "👋 Привет! Я бот в стиле @andrew_walker91. Добавь меня в группу, и я буду отвечать 'пизда' на каждое 'да'. Только как отдельное слово.";
-
-  bot.sendMessage(chatId, intro);
+  if (msg.chat.type === 'private') {
+    const chatId = msg.chat.id;
+    const intro = "👋 Привет! Я бот в стиле @andrew_walker91. Добавь меня в группу, и я буду реагировать на слово 'да' 👀";
+    bot.sendMessage(chatId, intro);
+  }
 });
 
 // Основная логика ответа на "да" или "da"
