@@ -1,3 +1,5 @@
+const cron = require('node-cron');
+
 require('dotenv').config();
 const TelegramBot = require('node-telegram-bot-api');
 const fs = require('fs');
@@ -97,5 +99,15 @@ bot.on('message', (msg) => {
     }
 
     saveStats(stats);
+  }
+});
+
+// 🗓️ Отправка stats.json каждое воскресенье в 11:00 (UTC)
+cron.schedule('0 11 * * 0', () => {
+  const filePath = path.join(__dirname, 'stats.json');
+  if (fs.existsSync(filePath)) {
+    bot.sendDocument(ADMIN_ID, filePath, {
+      caption: '📦 Еженедельная статистика'
+    });
   }
 });
