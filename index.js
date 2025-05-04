@@ -108,6 +108,14 @@ bot.on('message', async (msg) => {
   }
 });
 
+setInterval(() => {
+  https.get('https://andrew-walker91-bot.onrender.com', (res) => {
+    console.log(`Self-ping status: ${res.statusCode}`);
+  }).on('error', (e) => {
+    console.error('Self-ping error:', e);
+  });
+}, 10 * 60 * 1000); // каждые 10 минут
+
 // 🗓️ Отправка stats.json каждое воскресенье в 11:00 UTC
 cron.schedule('0 11 * * 0', () => {
   const filePath = path.join(__dirname, 'stats.json');
