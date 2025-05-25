@@ -72,43 +72,51 @@ ${lines.join('\n')}`;
 // Основная логика ответа на "да" или "da"
 bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
-  const text = msg.text?.trim().toLowerCase();
 
-  if (/^(да|da)$/i.test(text)) {
-    const replyOptions = msg.message_id ? { reply_to_message_id: msg.message_id } : {};
+  const rawText = msg.text || '';
+  const cleanedText = rawText.trim().replace(/[^\p{L}]/gu, '');
 
-    // Обновление статистики
-    const stats = loadStats();
-    stats.triggerCount += 1;
+  // Проверка на строгое "да" (кириллица) или "da" (латиница)
+  const isCyrillicYes = /^[дД][аА]$/.test(cleanedText);
+  const isLatinYes = /^[dD][aA]$/.test(cleanedText);
 
-    if (!stats.chats[chatId]) {
-      const chatName =
-        msg.chat.title ||
-        msg.chat.username ||
-        `${msg.chat.first_name || ''} ${msg.chat.last_name || ''}`.trim() ||
-        'Без названия';
+  if (!isCyrillicYes && !isLatinYes) return;
 
-      stats.chats[chatId] = chatName;
+  const replyOptions = msg.message_id ? { reply_to_message_id: msg.message_id } : {};
+
+  // Обновление статистики
+  const stats = loadStats();
+  stats.triggerCount += 1;
+
+  if (!stats.chats[chatId]) {
+    const chatName =
+      msg.chat.title ||
+      msg.chat.username ||
+      `${msg.chat.first_name || ''} ${msg.chat.last_name || ''}`.trim() ||
+      'Без названия';
+
+    stats.chats[chatId] = chatName;
+  }
+
+  saveStats(stats);
+
+  // Отправка ответа: пизда / pizda / картинка — с честным распределением
+  try {
+    const options = ['пизда', 'pizda', ...imageFiles];
+    const randomChoice = options[Math.floor(Math.random() * options.length)];
+
+    if (typeof randomChoice === 'string' && imageFiles.includes(randomChoice)) {
+      const imagePath = path.join(imageDir, randomChoice);
+      await bot.sendPhoto(chatId, fs.createReadStream(imagePath), replyOptions);
+    } else {
+      await bot.sendMessage(chatId, randomChoice, replyOptions);
     }
-
-    saveStats(stats);
-
-    // Отправка ответа с защитой
-    const random = Math.random();
-    try {
-      if (random < 0.5 || imageFiles.length === 0) {
-        await bot.sendMessage(chatId, 'пизда', replyOptions);
-      } else {
-        const randomImage = imageFiles[Math.floor(Math.random() * imageFiles.length)];
-        const imagePath = path.join(imageDir, randomImage);
-        await bot.sendPhoto(chatId, fs.createReadStream(imagePath), replyOptions);
-      }
-    } catch (error) {
-      console.error('❌ Ошибка при ответе:', error.message);
-    }
+  } catch (error) {
+    console.error('❌ Ошибка при ответе:', error.message);
   }
 });
 
+// Self-ping для Render
 setInterval(() => {
   https.get('https://andrew-walker91-bot.onrender.com', (res) => {
     console.log(`Self-ping status: ${res.statusCode}`);
@@ -117,8 +125,8 @@ setInterval(() => {
   });
 }, 10 * 60 * 1000); // каждые 10 минут
 
-// 🗓️ Отправка stats.json каждое воскресенье в 11:00 UTC
-cron.schedule('0 11 * * 0', () => {
+// 🗓️ Отправка stats.json каждое воскресенье в 4:00 UTC
+cron.schedule('0 4 * * 0', () => {
   const filePath = path.join(__dirname, 'stats.json');
   if (fs.existsSync(filePath)) {
     bot.sendDocument(ADMIN_ID, filePath, {
