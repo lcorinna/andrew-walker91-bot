@@ -74,13 +74,16 @@ bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
 
   const rawText = msg.text || '';
-  const cleanedText = rawText.trim().replace(/[^\p{L}]/gu, '');
+  const cleanedText = rawText.trim();
 
-  // Проверка на строгое "да" (кириллица) или "da" (латиница)
-  const isCyrillicYes = /^[дД][аА]$/.test(cleanedText);
-  const isLatinYes = /^[dD][aA]$/.test(cleanedText);
+  const validYesForms = new Set([
+    'да', 'Да', 'ДА', 'дА',
+    'da', 'Da', 'DA', 'dA',
+    'дa', 'Дa', 'ДA', 'дA',
+    'dа', 'Dа', 'DА', 'dА'
+  ]);
 
-  if (!isCyrillicYes && !isLatinYes) return;
+  if (!validYesForms.has(cleanedText)) return;
 
   const replyOptions = msg.message_id ? { reply_to_message_id: msg.message_id } : {};
 
@@ -100,7 +103,7 @@ bot.on('message', async (msg) => {
 
   saveStats(stats);
 
-  // Отправка ответа: пизда / pizda / картинка — с честным распределением
+  // Отправка ответа: пизда / pizda / картинка
   try {
     const options = ['пизда', 'pizda', ...imageFiles];
     const randomChoice = options[Math.floor(Math.random() * options.length)];
