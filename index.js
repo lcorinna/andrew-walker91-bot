@@ -7,7 +7,6 @@ require('dotenv').config();
 const TelegramBot = require('node-telegram-bot-api');
 const fs = require('fs');
 const path = require('path');
-const axios = require('axios');
 
 const token = process.env.BOT_TOKEN;
 const bot = new TelegramBot(token, { polling: true });
@@ -104,11 +103,7 @@ async function handleMessage(msg, isEdit = false) {
   // Если пора ставить реакцию
   if (counter.current >= counter.target) {
     try {
-      await axios.post(`https://api.telegram.org/bot${token}/setMessageReaction`, {
-        chat_id: chatId,
-        message_id: messageId,
-        reaction: ['💘']
-      });
+      await bot.setMessageReaction(chatId, messageId, ['💘']);
       console.log(`💘 Реакция поставлена в чате ${chatId} (сообщение ${messageId})`);
     } catch (err) {
       console.error(`❌ Ошибка при установке реакции: ${err.message}`);
@@ -138,7 +133,7 @@ async function handleMessage(msg, isEdit = false) {
   }
 
   saveStats(stats);
-
+  
   // Отправка ответа: пизда / pizda / картинка
   try {
     const options = ['пизда', 'pizda', ...imageFiles];
