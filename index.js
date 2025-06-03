@@ -2,6 +2,7 @@ const cron = require('node-cron');
 const express = require('express');
 const app = express();
 const https = require('https');
+const axios = require('axios');
 
 require('dotenv').config();
 const TelegramBot = require('node-telegram-bot-api');
@@ -103,7 +104,11 @@ async function handleMessage(msg, isEdit = false) {
   // Если пора ставить реакцию
   if (counter.current >= counter.target) {
     try {
-      await bot.setMessageReaction(chatId, messageId, ['💘']);
+      await axios.post(`https://api.telegram.org/bot${token}/setMessageReaction`, {
+        chat_id: chatId,
+        message_id: messageId,
+        reaction: [{ type: "emoji", emoji: "💘" }]
+      });
       console.log(`💘 Реакция поставлена в чате ${chatId} (сообщение ${messageId})`);
     } catch (err) {
       console.error(`❌ Ошибка при установке реакции: ${err.message}`);
