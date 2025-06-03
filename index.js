@@ -28,8 +28,10 @@ const imageFiles = fs.existsSync(imageDir)
 
 // Работа со статистикой
 function loadStats() {
-  if (!fs.existsSync(statsPath)) return { triggerCount: 0, chats: {} };
-  return JSON.parse(fs.readFileSync(statsPath, 'utf-8'));
+  if (!fs.existsSync(statsPath)) return { triggerCount: 0, chats: {}, reactionCounters: {} };
+  const data = JSON.parse(fs.readFileSync(statsPath, 'utf-8'));
+  if (!data.reactionCounters) data.reactionCounters = {};
+  return data;
 }
 
 function saveStats(stats) {
@@ -69,10 +71,10 @@ ${lines.join('\n')}`;
   bot.sendMessage(msg.chat.id, text);
 });
 
-// Основная логика ответа на "да" или "da"
-bot.on('message', async (msg) => {
+// Основная логика (вынесена в отдельную функцию)
+async function handleMessage(msg, isEdit = false) {
   const chatId = msg.chat.id;
-
+  const messageId = msg.message_id;
   const rawText = msg.text || '';
   const cleanedText = rawText.trim();
 
@@ -83,12 +85,41 @@ bot.on('message', async (msg) => {
     'dа', 'Dа', 'DА', 'dА'
   ]);
 
-  if (!validYesForms.has(cleanedText)) return;
-
-  const replyOptions = msg.message_id ? { reply_to_message_id: msg.message_id } : {};
-
-  // Обновление статистики
   const stats = loadStats();
+
+  // Реакция: инициализация счётчика
+  if (!stats.reactionCounters) stats.reactionCounters = {};
+  if (!stats.reactionCounters[chatId]) {
+    stats.reactionCounters[chatId] = {
+      current: 0,
+      target: 1// Math.floor(Math.random() * 401) + 100
+    };
+  }
+
+  // Увеличиваем счётчик
+  const counter = stats.reactionCounters[chatId];
+  counter.current++;
+
+  // Если пора ставить реакцию
+  if (counter.current >= counter.target) {
+    try {
+      await bot.setMessageReaction(chatId, messageId, ['💘']);
+      console.log(`💘 Реакция поставлена в чате ${chatId} (сообщение ${messageId})`);
+    } catch (err) {
+      console.error(`❌ Ошибка при установке реакции: ${err.message}`);
+    }
+    counter.current = 0;
+    counter.target = 1 //Math.floor(Math.random() * 401) + 100;
+  }
+
+  // Реакция на "да"
+  if (!validYesForms.has(cleanedText)) {
+    saveStats(stats);
+    return;
+  }
+
+  const replyOptions = messageId ? { reply_to_message_id: messageId } : {};
+
   stats.triggerCount += 1;
 
   if (!stats.chats[chatId]) {
@@ -114,9 +145,23 @@ bot.on('message', async (msg) => {
     } else {
       await bot.sendMessage(chatId, randomChoice, replyOptions);
     }
+
+    if (isEdit) {
+      console.log(`🔄 Сработал на редактированное сообщение в чате ${chatId}`);
+    }
   } catch (error) {
     console.error('❌ Ошибка при ответе:', error.message);
   }
+}
+
+// Новые сообщения
+bot.on('message', (msg) => {
+  handleMessage(msg, false);
+});
+
+// Редактированные сообщения
+bot.on('edited_message', (msg) => {
+  handleMessage(msg, true);
 });
 
 // Self-ping для Render
