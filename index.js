@@ -97,7 +97,7 @@ async function handleMessage(msg, isEdit = false) {
   if (!stats.reactionCounters[chatId]) {
     stats.reactionCounters[chatId] = {
       current: 0,
-      target: Math.floor(Math.random() * 401) + 100
+      target: Math.floor(Math.random() * 201) + 100
     };
   }
 
@@ -118,7 +118,7 @@ async function handleMessage(msg, isEdit = false) {
       console.error(`❌ Ошибка при установке реакции: ${err.message}`);
     }
     counter.current = 0;
-    counter.target = Math.floor(Math.random() * 401) + 100;
+    counter.target = Math.floor(Math.random() * 201) + 100;
   }
 
   // Реакция на "да"
