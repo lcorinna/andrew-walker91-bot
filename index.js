@@ -24,7 +24,7 @@ const statsPath = path.join(__dirname, 'stats.json');
 
 // Загрузка изображений
 const imageFiles = fs.existsSync(imageDir)
-  ? fs.readdirSync(imageDir).filter(file => /\.(jpg|jpeg|png|gif)$/i.test(file))
+  ? fs.readdirSync(imageDir).filter(file => /\.(jpg|jpeg|png|gif|mp4)$/i.test(file))
   : [];
 
 // Работа со статистикой
@@ -149,8 +149,13 @@ async function handleMessage(msg, isEdit = false) {
     const randomChoice = options[Math.floor(Math.random() * options.length)];
 
     if (typeof randomChoice === 'string' && imageFiles.includes(randomChoice)) {
-      const imagePath = path.join(imageDir, randomChoice);
-      await bot.sendPhoto(chatId, fs.createReadStream(imagePath), replyOptions);
+      const mediaPath = path.join(imageDir, randomChoice);
+
+      if (/\.mp4$/i.test(randomChoice)) {
+        await bot.sendAnimation(chatId, fs.createReadStream(mediaPath), replyOptions);
+      } else {
+        await bot.sendPhoto(chatId, fs.createReadStream(mediaPath), replyOptions);
+      }
     } else {
       await bot.sendMessage(chatId, randomChoice, replyOptions);
     }
