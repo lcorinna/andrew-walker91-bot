@@ -11,6 +11,7 @@ const path = require('path');
 
 const token = process.env.BOT_TOKEN;
 const bot = new TelegramBot(token, { polling: true });
+// TODO: .env мб?
 const ADMIN_ID = 271223425;
 
 // Express-сервер для Render
