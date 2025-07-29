@@ -1,10 +1,10 @@
 const cron = require('node-cron');
 const express = require('express');
 const app = express();
-const https = require('https');
 const axios = require('axios');
 
 require('dotenv').config();
+
 const TelegramBot = require('node-telegram-bot-api');
 const fs = require('fs');
 const path = require('path');
@@ -15,6 +15,7 @@ const ADMIN_ID = 271223425;
 
 // Express-сервер для Render
 const PORT = process.env.PORT || 3000;
+
 app.get('/', (_req, res) => res.send('Bot is alive!'));
 app.listen(PORT, () => console.log(`Web server running on port ${PORT}`));
 
@@ -177,15 +178,6 @@ bot.on('message', (msg) => {
 bot.on('edited_message', (msg) => {
   handleMessage(msg, true);
 });
-
-// Self-ping для Render
-setInterval(() => {
-  https.get('https://andrew-walker91-bot.onrender.com', (res) => {
-    console.log(`Self-ping status: ${res.statusCode}`);
-  }).on('error', (e) => {
-    console.error('Self-ping error:', e);
-  });
-}, 10 * 60 * 1000); // каждые 10 минут
 
 // 🗓️ Отправка stats.json каждое воскресенье в 4:00 UTC
 cron.schedule('0 4 * * 0', () => {
