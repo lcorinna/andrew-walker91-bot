@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  andrew-bot:
+    build:
+      context: .
+      args:
+        PORT: ${PORT}
+    container_name: andrew-bot
+    restart: unless-stopped
+    ports:
+      - "${PORT}:${PORT}"
+    environment:
+      - BOT_TOKEN=${BOT_TOKEN}
+      - PORT=${PORT}
+    volumes:
+      - ./images:/app/images
+      - ./stats.json:/app/stats.json
