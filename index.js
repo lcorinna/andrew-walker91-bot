@@ -15,7 +15,7 @@ const ADMIN_ID = 271223425;
 
 // Express-сервер для Render
 const PORT = process.env.PORT || 3000;
-app.get('/', (req, res) => res.send('Bot is alive!'));
+app.get('/', (_req, res) => res.send('Bot is alive!'));
 app.listen(PORT, () => console.log(`Web server running on port ${PORT}`));
 
 // Пути
@@ -142,7 +142,7 @@ async function handleMessage(msg, isEdit = false) {
   }
 
   saveStats(stats);
-  
+
   // Отправка ответа: пизда / pizda / картинка
   try {
     const options = ['пизда', 'pizda', ...imageFiles];
