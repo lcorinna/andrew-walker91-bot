@@ -82,7 +82,7 @@ ${lines.join('\n')}`;
 async function handleMessage(msg, isEdit = false) {
   const chatId = msg.chat.id;
   const messageId = msg.message_id;
-  const rawText = msg.text || '';
+  const rawText = msg.text || msg.caption || '';
   const cleanedText = rawText.trim();
 
   const validYesForms = new Set([
