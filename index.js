@@ -1,38 +1,40 @@
-const cron = require('node-cron');
-const express = require('express');
+const cron = require("node-cron");
+const express = require("express");
 const app = express();
-const axios = require('axios');
+require("dotenv").config();
 
-require('dotenv').config();
+const TelegramBot = require("node-telegram-bot-api");
+const fs = require("fs");
+const path = require("path");
 
-const TelegramBot = require('node-telegram-bot-api');
-const fs = require('fs');
-const path = require('path');
+// Подключаем вынесенную логику сообщений
+const handleMessage = require("./messageHandler");
 
 const token = process.env.BOT_TOKEN;
 const bot = new TelegramBot(token, { polling: true });
-// TODO: .env мб?
 const ADMIN_ID = 271223425;
 
 // Express-сервер для Render
 const PORT = process.env.PORT || 3000;
-
-app.get('/', (_req, res) => res.send('Bot is alive!'));
+app.get("/", (_req, res) => res.send("Bot is alive!"));
 app.listen(PORT, () => console.log(`Web server running on port ${PORT}`));
 
 // Пути
-const imageDir = path.join(__dirname, 'images');
-const statsPath = path.join(__dirname, 'stats.json');
+const imageDir = path.join(__dirname, "images");
+const statsPath = path.join(__dirname, "stats.json");
 
-// Загрузка изображений и аудио
+// Загрузка файлов
 const imageFiles = fs.existsSync(imageDir)
-  ? fs.readdirSync(imageDir).filter(file => /\.(jpg|jpeg|png|gif|mp4|mp3|ogg)$/i.test(file))
+  ? fs
+      .readdirSync(imageDir)
+      .filter((file) => /\.(jpg|jpeg|png|gif|mp4|mp3|ogg)$/i.test(file))
   : [];
 
 // Работа со статистикой
 function loadStats() {
-  if (!fs.existsSync(statsPath)) return { triggerCount: 0, chats: {}, reactionCounters: {} };
-  const data = JSON.parse(fs.readFileSync(statsPath, 'utf-8'));
+  if (!fs.existsSync(statsPath))
+    return { triggerCount: 0, chats: {}, reactionCounters: {} };
+  const data = JSON.parse(fs.readFileSync(statsPath, "utf-8"));
   if (!data.reactionCounters) data.reactionCounters = {};
   return data;
 }
@@ -41,13 +43,36 @@ function saveStats(stats) {
   fs.writeFileSync(statsPath, JSON.stringify(stats, null, 2));
 }
 
+// Загружаем в оперативную память один раз
+let statsCache = loadStats();
+
+// Автосохранение раз в 5 минут (не дергает диск на каждое сообщение)
+setInterval(
+  () => {
+    saveStats(statsCache);
+  },
+  5 * 60 * 1000,
+);
+
+// Сохранение при выключении скрипта
+process.on("SIGINT", () => {
+  saveStats(statsCache);
+  process.exit();
+});
+process.on("SIGTERM", () => {
+  saveStats(statsCache);
+  process.exit();
+});
+
+// --- КОМАНДЫ БОТА ---
+
 // /start — только в личке
 bot.onText(/^\/start$/, (msg) => {
-  if (msg.chat.type === 'private') {
+  if (msg.chat.type === "private") {
     const intro = `👋 Привет! Я бот в стиле @andrew_walker91.
     📢 Добавь меня в группу — и я буду отвечать на каждое сообщение с "да" 👀
     💘 А ещё я умею ставить реакции:
-    Каждое случайное *N*-ое сообщение (от 100 до 500) получает реакцию 💘.
+    Каждое случайное *N*-ое сообщение (от 100 до 300) получает реакцию 💘.
     ⚠️ Чтобы реакции работали, сделай меня админом в группе (иначе Telegram не разрешит их ставить).`;
     bot.sendMessage(msg.chat.id, intro);
   }
@@ -55,7 +80,7 @@ bot.onText(/^\/start$/, (msg) => {
 
 // /about — инфо об авторе
 bot.onText(/^\/about$/, (msg) => {
-  if (msg.chat.type === 'private') {
+  if (msg.chat.type === "private") {
     const message = `👤 Автор: @gaydaychuk\n💬 Нашли баг? Есть идеи? Пишите в личку!`;
     bot.sendMessage(msg.chat.id, message);
   }
@@ -63,148 +88,53 @@ bot.onText(/^\/about$/, (msg) => {
 
 // /stats — только для админа в личке
 bot.onText(/^\/stats$/, (msg) => {
-  if (msg.from.id !== ADMIN_ID || msg.chat.type !== 'private') return;
+  if (msg.from.id !== ADMIN_ID || msg.chat.type !== "private") return;
 
-  const stats = loadStats();
-  const lines = Object.entries(stats.chats).map(([id, name]) => `• ${name} (${id})`);
+  const lines = Object.entries(statsCache.chats).map(
+    ([id, name]) => `• ${name} (${id})`,
+  );
 
   const text = `📊 Статистика:
-Сработал: ${stats.triggerCount} раз
+Сработал: ${statsCache.triggerCount} раз
 Чатов: ${lines.length}
 
 📋 Список чатов:
-${lines.join('\n')}`;
+${lines.join("\n")}`;
 
   bot.sendMessage(msg.chat.id, text);
 });
 
-// Основная логика (вынесена в отдельную функцию)
-async function handleMessage(msg, isEdit = false) {
-  const chatId = msg.chat.id;
-  const messageId = msg.message_id;
-  const rawText = msg.text || msg.caption || '';
-  const cleanedText = rawText.trim();
+// --- СЛУШАТЕЛИ СООБЩЕНИЙ ---
 
-  const validYesForms = new Set([
-    'да', 'Да', 'ДА', 'дА',
-    'da', 'Da', 'DA', 'dA',
-    'дa', 'Дa', 'ДA', 'дA',
-    'dа', 'Dа', 'DА', 'dА'
-  ]);
+// Собираем зависимости, чтобы передать их во второй файл
+const botDependencies = { bot, token, statsCache, imageFiles, imageDir };
 
-  const stats = loadStats();
+bot.on("message", (msg) => {
+  handleMessage(msg, false, botDependencies);
+});
 
-  // Реакция: инициализация счётчика
-  if (!stats.reactionCounters) stats.reactionCounters = {};
-  if (!stats.reactionCounters[chatId]) {
-    stats.reactionCounters[chatId] = {
-      current: 0,
-      target: Math.floor(Math.random() * 201) + 100
-    };
-  }
+bot.on("edited_message", (msg) => {
+  handleMessage(msg, true, botDependencies);
+});
 
-  // Увеличиваем счётчик
-  const counter = stats.reactionCounters[chatId];
-  counter.current++;
+// --- CRON ЗАДАЧА ---
 
-  // Если пора ставить реакцию
-  if (counter.current >= counter.target) {
-    try {
-      await axios.post(`https://api.telegram.org/bot${token}/setMessageReaction`, {
-        chat_id: chatId,
-        message_id: messageId,
-        reaction: [{ type: "emoji", emoji: "💘" }]
+// 🗓️ Отправка stats.json в последнее воскресенье месяца в 4:00 UTC
+cron.schedule("0 4 * * 0", () => {
+  const today = new Date();
+
+  // Прибавляем неделю: если месяц изменился, значит сегодня последнее воскресенье
+  const nextSunday = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate() + 7,
+  );
+
+  if (today.getMonth() !== nextSunday.getMonth()) {
+    if (fs.existsSync(statsPath)) {
+      bot.sendDocument(ADMIN_ID, statsPath, {
+        caption: "📦 Статистика за месяц",
       });
-      console.log(`💘 Реакция поставлена в чате ${chatId} (сообщение ${messageId})`);
-    } catch (err) {
-      console.error(`❌ Ошибка при установке реакции: ${err.message}`);
     }
-    counter.current = 0;
-    counter.target = Math.floor(Math.random() * 201) + 100;
-  }
-
-  // Реакция на "да"
-  if (!validYesForms.has(cleanedText)) {
-    saveStats(stats);
-    return;
-  }
-
-  const replyOptions = messageId ? { reply_to_message_id: messageId } : {};
-
-  stats.triggerCount += 1;
-
-  if (!stats.chats[chatId]) {
-    const chatName =
-      msg.chat.title ||
-      msg.chat.username ||
-      `${msg.chat.first_name || ''} ${msg.chat.last_name || ''}`.trim() ||
-      'Без названия';
-
-    stats.chats[chatId] = chatName;
-  }
-
-  saveStats(stats);
-
-  // Отправка ответа: пизда / pizda / картинка / аудио
-  try {
-    const options = ['пизда', 'pizda', ...imageFiles];
-    const randomChoice = options[Math.floor(Math.random() * options.length)];
-
-    if (typeof randomChoice === 'string' && imageFiles.includes(randomChoice)) {
-      const mediaPath = path.join(imageDir, randomChoice);
-
-      if (/\.mp4$/i.test(randomChoice)) {
-        // Эксклюзивное правило для pizda41.mp4
-        if (randomChoice === 'pizda41.mp4') {
-          const isWithSound = Math.random() > 0.5; // Шанс 50%
-          
-          if (isWithSound) {
-            // Отправляем как полноценное видео со звуком
-            await bot.sendVideo(chatId, fs.createReadStream(mediaPath), replyOptions);
-          } else {
-            // Отправляем как беззвучную зацикленную гифку
-            await bot.sendAnimation(chatId, fs.createReadStream(mediaPath), replyOptions);
-          }
-        } else {
-          // Для всех остальных mp4 файлов оставляем поведение по умолчанию (как гифки)
-          await bot.sendAnimation(chatId, fs.createReadStream(mediaPath), replyOptions);
-        }
-
-      } else if (/\.(mp3|ogg)$/i.test(randomChoice)) {
-        // Отправка Голосового сообщения
-        await bot.sendVoice(chatId, fs.createReadStream(mediaPath), replyOptions);
-      } else {
-        // Отправка Картинки
-        await bot.sendPhoto(chatId, fs.createReadStream(mediaPath), replyOptions);
-      }
-    } else {
-      await bot.sendMessage(chatId, randomChoice, replyOptions);
-    }
-
-    if (isEdit) {
-      console.log(`🔄 Сработал на редактированное сообщение в чате ${chatId}`);
-    }
-  } catch (error) {
-    console.error('❌ Ошибка при ответе:', error.message);
-  }
-}
-
-// Новые сообщения
-bot.on('message', (msg) => {
-  handleMessage(msg, false);
-});
-
-// Редактированные сообщения
-bot.on('edited_message', (msg) => {
-  handleMessage(msg, true);
-});
-
-// 🗓️ Отправка stats.json каждое воскресенье в 4:00 UTC
-cron.schedule('0 4 * * 0', () => {
-  const filePath = path.join(__dirname, 'stats.json');
-  if (fs.existsSync(filePath)) {
-    bot.sendDocument(ADMIN_ID, filePath, {
-      caption: '📦 Еженедельная статистика'
-    });
   }
 });
