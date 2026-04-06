@@ -24,16 +24,10 @@ app.listen(PORT, () => console.log(`Web server running on port ${PORT}`));
 const imageDir = path.join(__dirname, 'images');
 const statsPath = path.join(__dirname, 'stats.json');
 
-// // Загрузка изображений и аудио
-// const imageFiles = fs.existsSync(imageDir)
-//   ? fs.readdirSync(imageDir).filter(file => /\.(jpg|jpeg|png|gif|mp4|mp3|ogg)$/i.test(file))
-//   : [];
-
-// ВРЕМЕННЫЙ ТЕСТ: загружаем ТОЛЬКО аудио
+// Загрузка изображений и аудио
 const imageFiles = fs.existsSync(imageDir)
-  ? fs.readdirSync(imageDir).filter(file => /\.(mp3|ogg)$/i.test(file))
+  ? fs.readdirSync(imageDir).filter(file => /\.(jpg|jpeg|png|gif|mp4|mp3|ogg)$/i.test(file))
   : [];
-
 
 // Работа со статистикой
 function loadStats() {
@@ -160,8 +154,22 @@ async function handleMessage(msg, isEdit = false) {
       const mediaPath = path.join(imageDir, randomChoice);
 
       if (/\.mp4$/i.test(randomChoice)) {
-        // Отправка GIF/Видео
-        await bot.sendAnimation(chatId, fs.createReadStream(mediaPath), replyOptions);
+        // Эксклюзивное правило для pizda41.mp4
+        if (randomChoice === 'pizda41.mp4') {
+          const isWithSound = Math.random() > 0.5; // Шанс 50%
+          
+          if (isWithSound) {
+            // Отправляем как полноценное видео со звуком
+            await bot.sendVideo(chatId, fs.createReadStream(mediaPath), replyOptions);
+          } else {
+            // Отправляем как беззвучную зацикленную гифку
+            await bot.sendAnimation(chatId, fs.createReadStream(mediaPath), replyOptions);
+          }
+        } else {
+          // Для всех остальных mp4 файлов оставляем поведение по умолчанию (как гифки)
+          await bot.sendAnimation(chatId, fs.createReadStream(mediaPath), replyOptions);
+        }
+
       } else if (/\.(mp3|ogg)$/i.test(randomChoice)) {
         // Отправка Голосового сообщения
         await bot.sendVoice(chatId, fs.createReadStream(mediaPath), replyOptions);
