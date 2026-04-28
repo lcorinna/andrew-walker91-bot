@@ -2,6 +2,11 @@ const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
 
+const validYesForms = new Set([
+  "да", "Да", "ДА", "дА", "da", "Da", "DA", "dA",
+  "дa", "Дa", "ДA", "дA", "dа", "Dа", "DА", "dА",
+]);
+
 async function handleMessage(msg, isEdit = false, dependencies) {
   const { bot, token, statsCache, imageFiles, imageDir } = dependencies;
 
@@ -10,13 +15,7 @@ async function handleMessage(msg, isEdit = false, dependencies) {
   const rawText = msg.text || msg.caption || "";
   const cleanedText = rawText.trim();
 
-  const validYesForms = new Set([
-    "да", "Да", "ДА", "дА", "da", "Da", "DA", "dA", 
-    "дa", "Дa", "ДA", "дA", "dа", "Dа", "DА", "dА",
-  ]);
-
   // Реакция: инициализация счётчика
-  if (!statsCache.reactionCounters) statsCache.reactionCounters = {};
   if (!statsCache.reactionCounters[chatId]) {
     statsCache.reactionCounters[chatId] = {
       current: 0,
@@ -54,7 +53,7 @@ async function handleMessage(msg, isEdit = false, dependencies) {
     return;
   }
 
-  const replyOptions = messageId ? { reply_to_message_id: messageId } : {};
+  const replyOptions = { reply_to_message_id: messageId };
 
   // Обновляем кэш статистики (он сохранится сам)
   statsCache.triggerCount += 1;

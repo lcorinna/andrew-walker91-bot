@@ -3,6 +3,12 @@ const express = require("express");
 const app = express();
 require("dotenv").config();
 
+const requiredEnv = ["BOT_TOKEN", "ADMIN_ID"];
+const missingEnv = requiredEnv.filter((key) => !process.env[key]);
+if (missingEnv.length > 0) {
+  throw new Error(`Missing required env variables: ${missingEnv.join(", ")}`);
+}
+
 const TelegramBot = require("node-telegram-bot-api");
 const fs = require("fs");
 const path = require("path");
@@ -12,7 +18,7 @@ const handleMessage = require("./messageHandler");
 
 const token = process.env.BOT_TOKEN;
 const bot = new TelegramBot(token, { polling: true });
-const ADMIN_ID = 271223425;
+const ADMIN_ID = Number(process.env.ADMIN_ID);
 
 // Express-сервер для Render
 const PORT = process.env.PORT || 3000;
@@ -40,7 +46,11 @@ function loadStats() {
 }
 
 function saveStats(stats) {
-  fs.writeFileSync(statsPath, JSON.stringify(stats, null, 2));
+  try {
+    fs.writeFileSync(statsPath, JSON.stringify(stats, null, 2));
+  } catch (err) {
+    console.error("❌ Ошибка при сохранении статистики:", err.message);
+  }
 }
 
 // Загружаем в оперативную память один раз
@@ -120,7 +130,7 @@ bot.on("edited_message", (msg) => {
 // --- CRON ЗАДАЧА ---
 
 // 🗓️ Отправка stats.json в последнее воскресенье месяца в 4:00 UTC
-cron.schedule("0 4 * * 0", () => {
+cron.schedule("0 4 * * 0", async () => {
   const today = new Date();
 
   // Прибавляем неделю: если месяц изменился, значит сегодня последнее воскресенье
@@ -132,7 +142,7 @@ cron.schedule("0 4 * * 0", () => {
 
   if (today.getMonth() !== nextSunday.getMonth()) {
     if (fs.existsSync(statsPath)) {
-      bot.sendDocument(ADMIN_ID, statsPath, {
+      await bot.sendDocument(ADMIN_ID, statsPath, {
         caption: "📦 Статистика за месяц",
       });
     }
