@@ -28,6 +28,30 @@ app.listen(PORT, () => console.log(`Web server running on port ${PORT}`));
 // Пути
 const imageDir = path.join(__dirname, "images");
 const statsPath = path.join(__dirname, "stats.json");
+const statsTempPath = `${statsPath}.tmp`;
+
+function createDefaultStats() {
+  return { triggerCount: 0, chats: {}, reactionCounters: {} };
+}
+
+function normalizeStats(data) {
+  const stats =
+    data && typeof data === "object" && !Array.isArray(data)
+      ? data
+      : createDefaultStats();
+
+  if (typeof stats.triggerCount !== "number") stats.triggerCount = 0;
+  if (!stats.chats || typeof stats.chats !== "object" || Array.isArray(stats.chats))
+    stats.chats = {};
+  if (
+    !stats.reactionCounters ||
+    typeof stats.reactionCounters !== "object" ||
+    Array.isArray(stats.reactionCounters)
+  )
+    stats.reactionCounters = {};
+
+  return stats;
+}
 
 // Загрузка файлов
 const imageFiles = fs.existsSync(imageDir)
@@ -38,16 +62,26 @@ const imageFiles = fs.existsSync(imageDir)
 
 // Работа со статистикой
 function loadStats() {
-  if (!fs.existsSync(statsPath))
-    return { triggerCount: 0, chats: {}, reactionCounters: {} };
-  const data = JSON.parse(fs.readFileSync(statsPath, "utf-8"));
-  if (!data.reactionCounters) data.reactionCounters = {};
-  return data;
+  if (!fs.existsSync(statsPath)) return createDefaultStats();
+
+  try {
+    const content = fs.readFileSync(statsPath, "utf-8").trim();
+    if (!content) {
+      console.warn("stats.json is empty, starting with default stats");
+      return createDefaultStats();
+    }
+
+    return normalizeStats(JSON.parse(content));
+  } catch (err) {
+    console.error("Failed to load stats.json, starting with default stats:", err.message);
+    return createDefaultStats();
+  }
 }
 
 function saveStats(stats) {
   try {
-    fs.writeFileSync(statsPath, JSON.stringify(stats, null, 2));
+    fs.writeFileSync(statsTempPath, JSON.stringify(normalizeStats(stats), null, 2));
+    fs.renameSync(statsTempPath, statsPath);
   } catch (err) {
     console.error("❌ Ошибка при сохранении статистики:", err.message);
   }
