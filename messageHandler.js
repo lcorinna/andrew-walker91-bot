@@ -70,11 +70,7 @@ async function handleMessage(msg, isEdit = false, dependencies) {
 
   // Отправка ответа: пизда / pizda / картинка / аудио
   try {
-    // Temporarily exclude image replies while checking audio playback compatibility.
-    const mediaFiles = imageFiles.filter(
-      (file) => !/\.(jpg|jpeg|png|gif)$/i.test(file),
-    );
-    const options = ["пизда", "pizda", ...mediaFiles];
+    const options = ["пизда", "pizda", ...imageFiles];
     const randomChoice = options[Math.floor(Math.random() * options.length)];
 
     if (typeof randomChoice === "string" && imageFiles.includes(randomChoice)) {
