@@ -15,6 +15,7 @@ const path = require("path");
 
 // Подключаем вынесенную логику сообщений
 const handleMessage = require("./messageHandler");
+const { createStatsHandler } = require("./statsReport");
 
 const token = process.env.BOT_TOKEN;
 const bot = new TelegramBot(token, { polling: true });
@@ -131,22 +132,7 @@ bot.onText(/^\/about$/, (msg) => {
 });
 
 // /stats — только для админа в личке
-bot.onText(/^\/stats$/, (msg) => {
-  if (msg.from.id !== ADMIN_ID || msg.chat.type !== "private") return;
-
-  const lines = Object.entries(statsCache.chats).map(
-    ([id, name]) => `• ${name} (${id})`,
-  );
-
-  const text = `📊 Статистика:
-Сработал: ${statsCache.triggerCount} раз
-Чатов: ${lines.length}
-
-📋 Список чатов:
-${lines.join("\n")}`;
-
-  bot.sendMessage(msg.chat.id, text);
-});
+bot.onText(/^\/stats$/, createStatsHandler({ bot, statsCache, adminId: ADMIN_ID }));
 
 // --- СЛУШАТЕЛИ СООБЩЕНИЙ ---
 
