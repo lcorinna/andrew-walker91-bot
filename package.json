@@ -5,8 +5,7 @@
   "description": "Telegram bot that replies 'пизда' when someone writes 'да' or 'da' as a separate word.",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "test": "node --test"
+    "start": "node index.js"
   },
   "keywords": [
     "telegram",
